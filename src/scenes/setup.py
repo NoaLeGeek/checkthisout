@@ -50,7 +50,7 @@ class SetupMenu(Scene):
 
         # Frame area where buttons and options are displayed
         self.frame = pygame.Rect(config.width*0.2, config.height*0.2, config.width*0.6, config.height*0.6)
-        self.bg = load_image('data/assets/images/setup_bg.jpg', (config.width, config.height))
+        self.bg = load_image('assets/images/setup_bg.jpg', (config.width, config.height))
 
     def create_buttons(self):
         """
@@ -207,7 +207,7 @@ class PlayerVsIaMenu(Scene):
         self.selected_color = 1  # Default selected color is white
         self.frame = pygame.Rect(config.width*0.2, config.height*0.2, config.width*0.6, config.height*0.6)  # Frame for UI
         self.depth = 2  # Default AI depth
-        self.bg = load_image('data/assets/images/ia_bg.jpeg', (config.width, config.height))  # Background image
+        self.bg = load_image('assets/images/ia_bg.jpeg', (config.width, config.height))  # Background image
         super().__init__()
 
     def create_buttons(self) -> None:
@@ -236,7 +236,7 @@ class PlayerVsIaMenu(Scene):
                 height=config.tile_size,
                 border_radius=1,
                 color=Colors.WHITE.value, 
-                image=load_image('data/assets/piece/alpha/wK.svg', (config.tile_size, config.tile_size)),
+                image=load_image('assets/piece/alpha/wK.svg', (config.tile_size, config.tile_size)),
                 command=lambda: self.update_color(1)
             ),
             'black': RectButton(  # Black color button
@@ -245,7 +245,7 @@ class PlayerVsIaMenu(Scene):
                 width=config.tile_size,
                 height=config.tile_size,
                 color=Colors.BLACK.value, 
-                image=load_image('data/assets/piece/alpha/bK.svg', (config.tile_size, config.tile_size)),
+                image=load_image('assets/piece/alpha/bK.svg', (config.tile_size, config.tile_size)),
                 command=lambda: self.update_color(-1)
             ),
             'random_color': RectButton(  # Random color button
@@ -446,16 +446,16 @@ class IaVsIaMenu(Scene):
         self.frame = pygame.Rect(config.width * 0.15, config.height * 0.18, config.width * 0.7, config.height * 0.64)
         
         # Kings' images for white and black
-        self.white_king = load_image('data/assets/piece/alpha/wK.svg', (config.tile_size, config.tile_size))
+        self.white_king = load_image('assets/piece/alpha/wK.svg', (config.tile_size, config.tile_size))
         self.white_rect = pygame.Rect(config.width * 0.45 - config.tile_size // 2, config.height * 0.2, config.tile_size, config.tile_size)
-        self.black_king = load_image('data/assets/piece/alpha/bK.svg', (config.tile_size, config.tile_size))
+        self.black_king = load_image('assets/piece/alpha/bK.svg', (config.tile_size, config.tile_size))
         self.black_rect = pygame.Rect(config.width * 0.66 - config.tile_size // 2, config.height * 0.2, config.tile_size, config.tile_size)
         
         # Depth levels for AI players
         self.depth = {1: 2, 2: 2}
         
         # Background image
-        self.bg = load_image('data/assets/images/ia_bg.jpeg', (config.width, config.height))
+        self.bg = load_image('assets/images/ia_bg.jpeg', (config.width, config.height))
         
         super().__init__()
 

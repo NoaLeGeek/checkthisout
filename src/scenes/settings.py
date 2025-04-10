@@ -25,9 +25,9 @@ class SettingsMenu(Scene):
         self.assets_menu = None
         self.filter = create_rect_surface(Colors.BLACK.value, config.width, config.height, 0, 210)
         self.frame = pygame.Rect(config.width*0.3, config.height*0.2, config.width*0.4, config.height*0.6)
-        self.volume_icon = load_image('data/assets/images/volume.png', (config.height*0.1, config.height*0.1))
+        self.volume_icon = load_image('assets/images/volume.png', (config.height*0.1, config.height*0.1))
         self.volume_icon_rect = self.volume_icon.get_rect(center=(config.width*0.353, config.height*0.732))
-        self.bg = load_image('data/assets/images/settings_bg.jpeg', (config.width, config.height))
+        self.bg = load_image('assets/images/settings_bg.jpeg', (config.width, config.height))
 
     def create_buttons(self):
         """
@@ -421,7 +421,7 @@ class SoundAssetsMenu(Scene):
             color=Colors.LIGHT_GRAY.value,
             hovered_color=Colors.WHITE.value,
             border_radius=int(config.height*0.05),
-            image=load_image('data/assets/images/volume.png', (config.height*0.15, config.height*0.15)),
+            image=load_image('assets/images/volume.png', (config.height*0.15, config.height*0.15)),
             command=self.play_sound
         )
 

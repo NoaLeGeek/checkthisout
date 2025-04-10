@@ -33,5 +33,7 @@ pip install -r requirements.txt
 Pour lancer le programme, placez-vous dans le dossier racine depuis un terminal et exécutez :
 
 python3 -m src.main
+OU
+python -m src.main
 
 Préparez-vous à vivre une expérience des échecs comme jamais auparavant avec CheckThisOut

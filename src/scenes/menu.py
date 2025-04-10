@@ -21,7 +21,7 @@ class MainMenu(Scene):
         Initializes the main menu with a background video and prepares buttons for navigation.
         """
         super().__init__()
-        self.video_player = VideoPlayer("data/assets/video/chess.mp4", config.width, config.height)
+        self.video_player = VideoPlayer("assets/video/chess.mp4", config.width, config.height)
 
     def create_buttons(self):
         """
@@ -178,7 +178,7 @@ class CreditsMenu(Scene):
         """
         Loads and creates the label displaying the credits from a text file.
         """
-        with open('data/assets/text/credits.txt', 'r', encoding='utf-8') as file:
+        with open('assets/text/credits.txt', 'r', encoding='utf-8') as file:
             text = file.read()
         self.labels = {
             "credits": Label(

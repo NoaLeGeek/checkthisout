@@ -32,7 +32,7 @@ class Game(Scene):
         self.evaluation_bar = pygame.Rect(config.margin, config.margin, config.eval_bar_width, config.height-config.margin*2)
         self.history_background = pygame.Rect(config.margin+config.columns*config.tile_size+config.eval_bar_width, config.margin, config.width*0.35, config.height-config.margin*2)
         self.ia_counter = 0
-        self.bg = load_image('data/assets/images/game_bg.jpeg', (config.width, config.height))
+        self.bg = load_image('assets/images/game_bg.jpeg', (config.width, config.height))
         super().__init__()
 
     def create_buttons(self):
@@ -64,7 +64,7 @@ class Game(Scene):
                 color=Colors.LIGHT_GRAY.value, 
                 hovered_color=Colors.WHITE.value,
                 command=self.board.flip_board, 
-                image=load_image("data/assets/images/arrows.png",(config.width*0.05, config.width*0.05))
+                image=load_image("assets/images/arrows.png",(config.width*0.05, config.width*0.05))
             ),
             'undo':RectButton(
                 x=self.history_background.centerx-config.width*0.07, 

@@ -51,7 +51,7 @@ class Label:
         """
         self.text = text
         self.center = center
-        self.font = pygame.font.Font(f"data/assets/font/{font_name}", font_size)
+        self.font = pygame.font.Font(f"assets/font/{font_name}", font_size)
         self.color = color
         self.background = background
         self.surface = self._create_surface()

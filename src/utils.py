@@ -179,8 +179,8 @@ def generate_piece_images(flipped: int = 1):
               are the corresponding loaded and processed pygame.Surface images.
     """
     images = dict()
-    for file in os.listdir(os.path.join('data', 'assets', 'piece', config.piece_asset)):
-        filepath = os.path.join('data','assets', 'piece', config.piece_asset, file)
+    for file in os.listdir(os.path.join('assets', 'piece', config.piece_asset)):
+        filepath = os.path.join('assets', 'piece', config.piece_asset, file)
         notation = os.path.splitext(file)[0]
         image = load_image(filepath, (config.tile_size, config.tile_size))
         if config.flipped_assets and ((flipped == 1 and notation.startswith("b")) or (flipped == -1 and notation.startswith("w"))):
@@ -204,7 +204,7 @@ def generate_board_image():
         FileNotFoundError: If no board image is found with the specified name and extensions.
     """
     for ext in ['jpg', 'png']:
-        filepath = os.path.join('data','assets', 'board', f"{config.board_asset}.{ext}")
+        filepath = os.path.join('assets', 'board', f"{config.board_asset}.{ext}")
         if os.path.exists(filepath):
             return load_image(filepath, (config.tile_size * 8, config.tile_size * 8))
     raise FileNotFoundError(f"No board image found for {config.board_asset} with extensions .jpg or .png")
@@ -225,13 +225,13 @@ def generate_sounds():
               pygame.mixer.Sound objects representing the loaded sounds.
     """
     sounds = dict()
-    for sound in os.listdir(os.path.join('data','assets', 'sound', config.sound_asset)):
-        filepath = os.path.join('data','assets', 'sound', config.sound_asset, sound)
+    for sound in os.listdir(os.path.join('assets', 'sound', config.sound_asset)):
+        filepath = os.path.join('assets', 'sound', config.sound_asset, sound)
         name = os.path.splitext(sound)[0]
         sounds[name] = load_sound(filepath)
     custom_sounds = ['illegal', 'notify', 'tenseconds']
     sounds.update({
-        name: pygame.mixer.Sound(os.path.join("data","assets", "sound", f"{name}.ogg"))
+        name: pygame.mixer.Sound(os.path.join("assets", "sound", f"{name}.ogg"))
         for name in custom_sounds
     })
     return sounds

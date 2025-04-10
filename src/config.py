@@ -29,7 +29,7 @@ class Config:
                           (str) and the value is a boolean indicating whether the rule is enabled.
         """
         self.config = configparser.ConfigParser()
-        self.config.read('data/config.cfg')
+        self.config.read('config.cfg')
         self.fps = self.config.getint('GENERAL', 'fps')
         self.volume = self.config.getfloat('GENERAL', 'volume')
         self.piece_asset = self.config.get('ASSETS', 'piece')
