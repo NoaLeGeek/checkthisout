@@ -33,6 +33,19 @@ class Player:
         self.king = None
         self.ia = -1
 
+    def count_pieces(self) -> int:
+        """
+        Counts the total number of pieces owned by the player.
+
+        This method iterates through the player's collection of pieces and sums
+        the number of pieces across all types (pawns, rooks, knights, bishops,
+        queens, and kings).
+
+        Returns:
+            int: The total number of pieces owned by the player.
+        """
+        return sum(len(pieces) for pieces in self.pieces.values())
+
     def add_piece(self, piece) -> None:
         """
         Adds a chess piece to the player's collection of pieces.
