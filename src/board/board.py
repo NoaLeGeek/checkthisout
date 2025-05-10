@@ -21,7 +21,7 @@ class Board:
         self.selected = None
         self.turn = 1
         self.winner = None
-        self.ep = None
+        self.en_passant = None
         self.promotion = None
         self.half_moves = 0
         self.full_moves = 1
@@ -55,7 +55,7 @@ class Board:
             self.current_player.play_move(self)
 
     def _create_board(self, fen: str) -> None:
-        self.board = {(r, c): Tile((r, c)) for r in range(config.rows) for c in range(config.columns)}
+        self.board = {(row, column): Tile((row, column)) for row in range(config.rows) for column in range(config.columns)}
         try:
             # Chess960 row generation
             if config.rules["chess960"] == True:
@@ -69,7 +69,7 @@ class Board:
             self.turn = 1 if fen_parts[1] == "w" else -1
             self._initialize_pieces(fen_parts[0])
             self._initialize_castling(fen_parts[2])
-            self.ep = self._parse_en_passant(fen_parts[3])
+            self.en_passant = self._parse_en_passant(fen_parts[3])
             self.half_moves = int(fen_parts[4])
             self.full_moves = int(fen_parts[5])
             play_sound(self.sounds, "game-start")
@@ -77,32 +77,30 @@ class Board:
             raise ValueError(f"Failed to parse FEN string: {fen}. Error: {e}")
 
     def _initialize_pieces(self, board_part: str):
-        for r, row in enumerate(board_part.split("/")):
-            c = 0
-            for char in row:
+        for row, part in enumerate(board_part.split("/")):
+            column = 0
+            for char in part:
                 if char.isdigit():
-                    c += int(char)  # Skip empty squares
+                    column += int(char)  # Skip empty squares
                 else:
                     color = 1 if char.isupper() else -1
-                    tile = Tile((r, c))
                     piece_type = notation_to_piece(char)
                     if not piece_type:
                         raise ValueError(f"Invalid piece notation: {char}")
                     piece = piece_type(color)
                     if config.piece_asset != "blindfold":
-                        piece_image_key = f"{(('w' if color == 1 else 'b') if config.piece_asset != "mono" else "")}{char.upper()}"
+                        piece_image_key = f"{(("w" if color == 1 else "b") if config.piece_asset != "mono" else "")}{char.upper()}"
                         if piece_image_key not in self.piece_images:
                             raise ValueError(f"Missing piece image for: {piece_image_key}")
                         piece.image = self.piece_images[piece_image_key]
                     self.get_player(color).add_piece(piece)
-                    tile.piece = piece
-                    self.board[(r, c)] = tile
+                    self.board[(row, column)].piece = piece
 
                     # Track the king's position
                     if char.upper() == "K":
-                        self.get_player(color).king = (r, c)
+                        self.get_player(color).king = (row, column)
 
-                    c += 1
+                    column += 1
 
     def _initialize_castling(self, castling_part: str):
         if castling_part == "-":
@@ -125,14 +123,14 @@ class Board:
                 return True
         return False
 
-    def _parse_en_passant(self, ep_part: str):
-        if ep_part in ['-', '–']:
+    def _parse_en_passant(self, en_passant_part: str):
+        if en_passant_part in ['-', '–']:
             return None
-        if len(ep_part) != 2 or not ep_part[0].isalpha() or not ep_part[1].isdigit():
-            raise ValueError(f"Invalid en passant notation: {ep_part}")
+        if len(en_passant_part) != 2 or not en_passant_part[0].isalpha() or not en_passant_part[1].isdigit():
+            raise ValueError(f"Invalid en passant notation: {en_passant_part}")
 
-        row = flip_pos(int(ep_part[1]) - 1, flipped=-self.flipped)
-        col = flip_pos(ord(ep_part[0]) - ord('a'), flipped=self.flipped)
+        row = flip_pos(int(en_passant_part[1]) - 1, flipped=-self.flipped)
+        col = flip_pos(ord(en_passant_part[0]) - ord('a'), flipped=self.flipped)
         return row, col
 
     def _transform_960_fen(self, fen: str):
@@ -247,8 +245,8 @@ class Board:
             # If the move is a capture, pawn move, castling, or a change in castling rights, mark it as irreversible
             self.last_irreversible_move = len(self.move_tree.get_root_to_leaf())
 
-    def _is_valid_en_passant(self, pos: tuple[int, int], ep: tuple[int, int]):
-        d_ep = en_passant_direction[ep[0]]
+    def _is_valid_en_passant(self, pos: tuple[int, int], en_passant: tuple[int, int]):
+        d_ep = en_passant_direction[en_passant[0]]
         for d_col in [-1, 1]:
             new_pos = (pos[0], pos[1] + d_col)
             if not self.in_bounds(new_pos) or self.is_empty(new_pos):
@@ -256,17 +254,17 @@ class Board:
             piece = self.get_piece(new_pos)
             if piece.notation != "P" or piece.color != d_ep*self.flipped:
                 continue
-            if self.convert_to_move(new_pos, ep).is_legal(self):
+            if self.convert_to_move(new_pos, en_passant).is_legal(self):
                 return True
         return False
 
     def _update_en_passant(self, move):
         from_pos, to_pos = move.from_pos, move.to_pos
-        self.ep = None
+        self.en_passant = None
         if not self.is_empty(from_pos) and self.get_piece(from_pos).notation == "P" and abs(from_pos[0] - to_pos[0]) == 2:
-            ep = ((from_pos[0] + to_pos[0]) // 2, from_pos[1])
-            if self._is_valid_en_passant((to_pos[0], to_pos[1]), ep):
-                self.ep = ep
+            en_passant = ((from_pos[0] + to_pos[0]) // 2, from_pos[1])
+            if self._is_valid_en_passant((to_pos[0], to_pos[1]), en_passant):
+                self.en_passant = en_passant
         
     def select(self, pos: tuple[int, int]):
         if self.selected is not None:
@@ -360,8 +358,8 @@ class Board:
             player = self.get_player(color)
             player.king = flip_pos(player.king)
         # Flipping the en passant square
-        if self.ep:
-            self.ep = flip_pos(self.ep)
+        if self.en_passant:
+            self.en_passant = flip_pos(self.en_passant)
         # Flipping the move tree
         self.move_tree.flip_tree()
         # Regenerating the piece images depending on the flipped state
@@ -443,10 +441,10 @@ class Board:
             k for color in [1, -1] for k in ("KQ" if color == 1 else "kq") if self.castling[color][1 if k.upper() == "K" else -1]
         ) or "-"
         en_passant = "-"
-        if self.ep is not None:
-            d_ep = en_passant_direction[self.ep[0]]
-            if self._is_valid_en_passant((self.ep[0] + d_ep, self.ep[1]), self.ep):
-                en_passant = chr(97 + flip_pos(self.ep[1], flipped = self.flipped)) + str(flip_pos(self.ep[0], flipped = -self.flipped) + 1)
+        if self.en_passant is not None:
+            d_ep = en_passant_direction[self.en_passant[0]]
+            if self._is_valid_en_passant((self.en_passant[0] + d_ep, self.en_passant[1]), self.en_passant):
+                en_passant = chr(97 + flip_pos(self.en_passant[1], flipped = self.flipped)) + str(flip_pos(self.en_passant[0], flipped = -self.flipped) + 1)
         return f"{fen} {turn} {castling} {en_passant} {self.half_moves} {self.full_moves}"
 
     def to_matrix(self):
