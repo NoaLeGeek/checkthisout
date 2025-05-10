@@ -170,7 +170,7 @@ class Pawn(Piece):
             if not board.in_bounds(new_pos):
                 continue
             # En passant
-            if board.ep == new_pos and not board.is_empty((from_pos[0], from_pos[1] + d_pos[1])) and board.get_piece((from_pos[0], from_pos[1] + d_pos[1])).is_enemy(self):
+            if board.en_passant == new_pos and not board.is_empty((from_pos[0], from_pos[1] + d_pos[1])) and board.get_piece((from_pos[0], from_pos[1] + d_pos[1])).is_enemy(self):
                 self.moves.append(new_pos)
             # Capture normale 
             if board.is_empty(new_pos):

@@ -4,36 +4,27 @@ from src.board.piece import piece_to_notation
 from src.utils import flip_pos, sign, get_value, debug_print, play_sound
 
 class Move:
+    """Represents a chess move, including special moves such as castling, en passant, and promotion.
+
+    This class encapsulates the logic and properties of a single move on a chess board,
+    including validation of standard and special moves.
+
+    Attributes:
+        from_pos (tuple[int, int]): The starting position of the move (row, column).
+        to_pos (tuple[int, int]): The destination position of the move (row, column).
+        moving_piece (Piece): The piece being moved.
+        captured_piece (Piece or None): The piece being captured, if any.
+        en_passant (bool): Indicates whether the move is an en passant capture.
+        castling (bool): Indicates whether the move is a castling move.
+        promotion (str or None): The notation of the piece to promote to (e.g., 'Q' for queen), or None if not a promotion.
+        notation (str or None): The algebraic notation of the move, if computed.
+        fen (str or None): The FEN string representing the board state after the move, if computed.
+
+    Raises:
+        ValueError: If there is no piece at from_pos.
+        ValueError: If promotion is specified but the move is not a valid pawn promotion.
+    """
     def __init__(self, board, from_pos, to_pos, promotion=None):
-        """
-        Initializes a Move object representing a chess move on the board.
-
-        This constructor validates the move, determines its type (e.g., normal move, 
-        promotion, en passant, castling), and initializes the relevant attributes.
-
-        Parameters:
-            board (Board): The chess board on which the move is being made.
-            from_pos (tuple): A tuple (row, col) representing the starting position of the move.
-            to_pos (tuple): A tuple (row, col) representing the destination position of the move.
-            promotion (str, optional): The piece to promote to if the move is a pawn promotion 
-                                       (e.g., 'Q' for Queen). Defaults to None.
-
-        Attributes:
-            from_pos (tuple): The starting position of the move.
-            to_pos (tuple): The destination position of the move.
-            moving_piece (Piece): The piece being moved.
-            en_passant (bool): True if the move is an en passant capture, False otherwise.
-            captured_piece (Piece or None): The piece being captured, if any. For en passant, 
-                                            this is the pawn being captured.
-            castling (bool): True if the move is a castling move, False otherwise.
-            promotion (str or None): The piece to promote to if the move is a pawn promotion.
-            notation (str or None): The algebraic notation of the move. Defaults to None.
-            fen (str or None): The FEN string representing the board state after the move. Defaults to None.
-
-        Raises:
-            ValueError: If there is no piece at `from_pos`.
-            ValueError: If the promotion is invalid (e.g., not a pawn or not at the last row).
-        """
         if board.is_empty(from_pos):
             raise ValueError(f"There is no piece at {from_pos}")
         self.from_pos = from_pos
@@ -42,44 +33,47 @@ class Move:
         if promotion is not None and (to_pos[0] not in [0, config.rows - 1] or self.moving_piece.notation != "P"):
             raise ValueError("Promotion is only possible for pawns at the last row")
         self.en_passant = self._is_en_passant(board)
-        self.captured_piece = board.get_piece((self.from_pos[0], board.ep[1])) if self.en_passant else board.get_piece(to_pos) 
+        self.captured_piece = board.get_piece((self.from_pos[0], board.en_passant[1])) if self.en_passant else board.get_piece(to_pos) 
         self.castling = self._is_castling(board)
         self.promotion = promotion
         self.notation = None
         self.fen = None
     
     def is_capture(self) -> bool:
-        """
-        Determines if the move results in the capture of an opponent's piece.
+        """Determines whether the move is a capture.
 
         Returns:
-            bool: True if the move captures an opponent's piece, False otherwise.
+            bool: True if the move results in the capture of an opponent's piece, False otherwise.
         """
         return self.captured_piece is not None
-    
-    def flip_move(self) -> None:
-        """
-        Reverses the positions of a move on the board by flipping the coordinates.
 
-        This method updates the `from_pos` and `to_pos` attributes of the move
-        by applying the `flip_pos` function to each. It is typically used to
-        adjust the move representation when the perspective of the board changes.
+    def flip_move(self) -> None:
+        """Flips the move coordinates vertically on the board.
+
+        This is typically used to transform the move perspective from one player to the other
+        by flipping both the starting and destination positions.
+
+        Returns:
+            None
         """
         self.from_pos = flip_pos(self.from_pos)
         self.to_pos = flip_pos(self.to_pos)
 
     def execute(self, board) -> None:
-        """
-        Executes a chess move for the first time on the given board and updates the board state accordingly.
+        """Executes the move on the given board, updating the game state accordingly.
 
-        This method handles all necessary updates to the board when a move is executed,
-        including castling rights, en passant status, move counters, and game history.
-        It also evaluates the board state after the move and checks for game-ending conditions.
-        All these updates and the move are saved in a MoveNode object and added to the move tree.
-        This method should be called only once for each move.
+        This method applies the move to the board, handling special cases such as castling, en passant,
+        pawn moves, and captures. It also updates move counters, game history, FEN notation, and evaluates
+        the new board state. The move is recorded in the move tree for potential undo functionality.
 
-        Parameters:
-            board (Board): The chess board object on which the move is executed.
+        Args:
+            board (Board): The chess board on which the move is to be executed.
+
+        Returns:
+            None
+
+        Raises:
+            AttributeError: If required board attributes (e.g., move_tree, negamax) are not defined.
         """
         # All the things to update when the move is done for the first time
         if config.rules["giveaway"] == False:
@@ -93,7 +87,7 @@ class Move:
         if board.turn == -1:
             board.full_moves += 1
         # Remember the move for undo
-        board.move_tree.add(board, MoveNode(self, board.move_tree.current.move, board))
+        board.move_tree.add(board, MoveNode(self, board))
         # This is the board state after the move
         self.fen = str(board)
         self.notation = self.to_notation(board)
@@ -102,20 +96,17 @@ class Move:
         board.score = board.negamax.evaluate_board(board)
 
     def move(self, board):
-        """
-        Executes a move on the chessboard, updating the board state and handling special rules.
-        This method can be called ad infinitum on the board.
+        """Applies the piece movement to the board, including handling promotion and turn switching.
 
-        Parameters:
-            board (Board): The current state of the chessboard. This object is updated to reflect the move.
+        This method updates the board state by moving the piece from its source to its destination.
+        If the move involves a promotion, it performs the promotion instead. It also switches the active
+        player, clears the selected piece, and updates the check counter if the '+3 checks' rule is enabled.
 
-        Functionality:
-            - If the move involves a promotion, the piece is promoted accordingly.
-            - Otherwise, the piece is moved to the target position.
-            - Updates the turn to the next player.
-            - Resets the selected piece on the board.
-            - Swaps the current player and the waiting player.
-            - Checks for the "+3 checks" rule, and increments the check count for the opponent if applicable.
+        Args:
+            board (Board): The chess board on which the move is to be applied.
+
+        Returns:
+            None
         """
         # Update the board state
         if self.promotion is not None:
@@ -129,6 +120,18 @@ class Move:
             board.checks[board.waiting_player.color] += 1
 
     def move_piece(self, board):
+        """Performs the movement of a piece on the board, including special cases such as castling and en passant.
+
+        This method updates the board by moving the piece to its destination and handling side effects
+        such as capturing opponent pieces, updating the king's position, executing en passant captures,
+        and processing castling. It also applies the '+3 checks' rule if enabled.
+
+        Args:
+            board (Board): The chess board where the piece movement is to be applied.
+
+        Returns:
+            None
+        """
         # Update kings' positions
         if self.moving_piece.notation == "K":
             board.current_player.king = self.to_pos
@@ -154,20 +157,17 @@ class Move:
             self.checks[board.waiting_player.color] += 1
 
     def _handle_castling(self, board):
-        """
-        Handles the castling move in a chess game. Castling is a special move 
-        involving the king and a rook, where both pieces move simultaneously 
-        under specific conditions.
-        Parameters:
-            board (Board): The current state of the chessboard. It provides 
-                           access to the positions of pieces and tiles.
-        Utility:
-            This function updates the board to reflect the castling move by:
-            - Moving the king to its destination column.
-            - Moving the rook to its corresponding destination column.
-            - Clearing the original positions of the king and rook.
-            It also accounts for Chess960 rules, where the rook's initial 
-            position may vary.
+        """Executes the castling move on the board.
+
+        This method moves both the king and the rook to their castling positions. It handles both
+        standard castling and Chess960-specific castling logic. The method calculates the destination
+        columns dynamically and updates the board state accordingly.
+
+        Args:
+            board (Board): The chess board on which the castling move is to be performed.
+
+        Returns:
+            None
         """
         from_pos, to_pos = self.from_pos, self.to_pos
         d = sign(to_pos[1] - from_pos[1])
@@ -187,36 +187,36 @@ class Move:
         board.get_tile((from_pos[0], dest_rook_column)).piece = rook
         
     def _handle_normal_move(self, board):
-        """
-        Handles a normal chess move by updating the board state.
+        """Executes a standard piece movement on the board.
 
-        This method moves a piece from its current position (`from_pos`) to a new position (`to_pos`) 
-        on the board. It updates the board tiles by setting the destination tile's piece to the 
-        moving piece and clearing the piece from the original tile.
+        This method moves the piece from its source position to the destination, without
+        handling any special rules (such as castling, en passant, or promotion).
 
-        Parameters:
-            board (Board): The chessboard object that contains the tiles and pieces.
+        Args:
+            board (Board): The chess board on which the move is to be applied.
+
+        Returns:
+            None
         """
         from_pos, to_pos = self.from_pos, self.to_pos
         board.get_tile(to_pos).piece = self.moving_piece
         board.get_tile(from_pos).piece = None
 
     def promote_piece(self, board, type_piece):
-        """
-        Promotes a pawn to a specified piece type during a chess game.
+        """Promotes a pawn to a specified piece type on the board.
 
-        This function replaces a pawn that has reached the promotion rank with a new piece 
-        of the specified type. It updates the board state, assigns the appropriate image 
-        to the new piece (if applicable), and ensures the new piece is added to the current 
-        player's collection of pieces.
+        This method replaces the pawn at the destination with a new piece of the specified type.
+        It also ensures the correct image for the piece is available and updates the board state accordingly.
+        
+        Args:
+            board (Board): The chess board on which the promotion takes place.
+            type_piece (class): The class of the piece to promote the pawn to (e.g., Queen, Rook, Bishop, Knight).
 
-        Parameters:
-            board (Board): The chess board object representing the current game state.
-            type_piece (Type[Piece]): The class of the piece to which the pawn will be promoted 
-                                      (e.g., Queen, Rook, Bishop, Knight).
+        Returns:
+            None
 
         Raises:
-            ValueError: If the image for the promoted piece is missing in the board's piece images.
+            ValueError: If the piece image for the promoted piece is missing.
         """
         new_piece = type_piece(self.moving_piece.color)
         if config.piece_asset != "blindfold":
@@ -230,15 +230,17 @@ class Move:
         board.promotion = None
 
     def undo(self, board) -> None:
-        """
-        Reverts the last move made on the chessboard, restoring the board state 
-        to what it was before the move. This includes updating the turn, 
-        resetting the selected piece, swapping the current and waiting players, 
-        and handling specific rules such as promotion and the "+3 checks" rule.
+        """Reverts the move on the board, undoing the effects of the previous action.
 
-        Parameters:
-            board (Board): The chessboard object representing the current game state. 
-                           It contains information about the players, pieces, and rules.
+        This method undoes the move by switching the turn, reversing player roles, and handling any 
+        special move effects such as pawn promotion. It also adjusts the check counter if the '+3 checks'
+        rule is enabled.
+
+        Args:
+            board (Board): The chess board to revert the move on.
+
+        Returns:
+            None
         """
         board.turn *= -1
         board.selected = None
@@ -251,39 +253,33 @@ class Move:
             self.undo_move_piece(board)
 
     def undo_promote_piece(self, board):
-        """
-        Reverts a pawn promotion on the chessboard by restoring the original piece 
-        and removing the promoted piece from the current player's active pieces.
+        """Reverts a pawn promotion on the board.
 
-        Parameters:
-            board (Board): The chessboard object that contains the tiles and pieces. 
-                           It provides access to the tiles and manages the state of the game.
+        This method undoes the promotion of a pawn, restoring the original piece at the starting position
+        and removing the promoted piece. It also restores the captured piece to its original position, if applicable.
 
-        Utility:
-            This function is used to undo a pawn promotion, typically as part of 
-            reverting a move in the game. It restores the original state of the 
-            board before the promotion occurred, including the original piece 
-            and any captured piece.
+        Args:
+            board (Board): The chess board to revert the promotion on.
+
+        Returns:
+            None
         """
         board.get_tile(self.from_pos).piece = self.moving_piece
         board.current_player.remove_piece(board.get_tile(self.to_pos).piece)
         board.get_tile(self.to_pos).piece = self.captured_piece
 
     def undo_move_piece(self, board):
-        """
-        Reverts the last move made on the chessboard, restoring the board state 
-        and updating the necessary attributes.
-        Parameters:
-            board (Board): The chessboard object representing the current state 
-                           of the game. It provides access to tiles, pieces, and 
-                           player information.
-        Utility:
-            - Restores the position of the moving piece to its original location.
-            - Restores the captured piece (if any) to its original position.
-            - Handles special cases such as en passant and castling.
-            - Updates the king's position if the moved piece was a king.
-            - Restores the captured piece to the waiting player's list of pieces 
-              if the move was a capture.
+        """Reverts a standard piece movement on the board.
+
+        This method undoes a regular piece move, restoring the board state by placing the piece
+        back at its original position. If the move was an en passant capture, it restores the captured piece.
+        It also handles the reversal of castling and king position updates.
+
+        Args:
+            board (Board): The chess board to revert the move on.
+
+        Returns:
+            None
         """
         # Restore the board state
         board.get_tile(self.from_pos).piece = self.moving_piece
@@ -309,15 +305,16 @@ class Move:
             board.waiting_player.add_piece(self.captured_piece)
 
     def play_sound_move(self, board) -> None:
-        """
-        Plays the appropriate sound effect based on the type of move made on the chessboard.
+        """Plays a sound corresponding to the type of move performed.
 
-        This function determines the type of move (e.g., castling, check, promotion, capture, or a regular move)
-        and plays the corresponding sound effect using the provided sound system.
+        This method plays different sounds depending on the move type, including castling, check, promotion,
+        capture, or a regular move. It chooses the appropriate sound based on the game state and the move being made.
 
-        Parameters:
-            board (Board): The current state of the chessboard, which includes information about the
-                           sounds system, the current player, and the game state (e.g., turn, flipped board).
+        Args:
+            board (Board): The chess board on which the move is executed.
+
+        Returns:
+            None
         """
         if self.castling:
             play_sound(board.sounds, "castle")
@@ -331,16 +328,14 @@ class Move:
             play_sound(board.sounds, ("move-self" if board.turn * board.flipped == 1 else "move-opponent"))
     
     def is_legal(self, board) -> bool:
-        """
-        Determines whether a move is legal on the given chess board.
+        """Checks whether the move is legal according to the game's rules.
 
-        This function evaluates the legality of a move based on the current game rules, 
-        including standard chess rules, castling rules, and optional giveaway chess rules. 
-        It also checks for conditions such as whether the king is in check during castling.
+        This method checks if the move is valid based on the current game state and move type. It handles
+        regular moves as well as castling, ensuring that the move follows the rules for legality. Special 
+        conditions such as "giveaway" rules, castling constraints, and checks are also considered.
 
-        Parameters:
-            board (Board): The current state of the chess board, which includes information 
-                           about the tiles, pieces, and game rules.
+        Args:
+            board (Board): The chess board on which the move is being checked for legality.
 
         Returns:
             bool: True if the move is legal, False otherwise.
@@ -369,16 +364,14 @@ class Move:
         return is_legal
     
     def _is_castling(self, board) -> bool:
-        """
-        Determines whether the current move is a castling move.
+        """Checks if the move is a castling move.
 
-        This function checks if the move being made by the king qualifies as a castling move,
-        considering the rules of standard chess or Chess960. It verifies the movement of the king,
-        the presence of a rook, and the castling rights for the player's color.
+        This method verifies if the move being considered is a valid castling move. It checks the conditions 
+        for castling based on the piece type (king), the direction of the move, and the castling rights for 
+        both players. It also handles the special case for Chess960, where additional conditions are applied.
 
-        Parameters:
-            board: The current state of the chessboard. It provides information about the positions
-                   of pieces, castling rights, and whether specific squares are empty.
+        Args:
+            board (Board): The chess board on which the move is being evaluated.
 
         Returns:
             bool: True if the move is a valid castling move, False otherwise.
@@ -397,43 +390,36 @@ class Move:
         return True
     
     def _is_en_passant(self, board) -> bool:
-        """
-        Determines if the current move is an en passant capture in a chess game.
+        """Checks if the move is an en passant capture.
 
-        An en passant capture occurs when a pawn moves two squares forward from its 
-        starting position and lands beside an opponent's pawn, allowing the opponent's 
-        pawn to capture it as if it had only moved one square forward.
+        This method determines if the move being considered is an en passant capture based on the 
+        current position of the pawn, the position of the en passant target, and the state of the board.
 
-        Parameters:
-            board (Board): The current state of the chessboard, which includes the 
-                           en passant target square (`ep`) if applicable.
+        Args:
+            board (Board): The chess board on which the move is being evaluated.
 
         Returns:
-            bool: True if the move is an en passant capture, False otherwise.
+            bool: True if the move is a valid en passant capture, False otherwise.
         """
         return (
             self.moving_piece.notation == "P" and
-            board.ep is not None and
-            self.to_pos == board.ep
+            board.en_passant is not None and
+            self.to_pos == board.en_passant
             )
         
     def to_notation(self, board) -> str:
-        """
-        Converts the current move into standard chess notation.
+        """Converts the move to its algebraic notation representation.
 
-        This method generates a string representation of the move in standard chess
-        notation, including special cases such as castling, captures, promotions, 
-        and checks/checkmates. The notation is adjusted based on the board's flipped 
-        state to ensure correct representation.
+        This method generates the standard chess algebraic notation for the current move, 
+        including special cases for castling, pawn promotions, captures, checks, and checkmates. 
+        It takes into account the current board state, including flipped coordinates and castling rights.
 
-        Parameters:
-            board (Board): The current state of the chessboard, which provides 
-                           context for the move, including flipped orientation 
-                           and player information.
+        Args:
+            board (Board): The chess board to generate the notation for the move.
 
         Returns:
-            str: A string representing the move in standard chess notation.
-        """
+            str: The algebraic notation for the move, including check or checkmate symbols if applicable.
+        """    
         string = ""
         # The move is O-O or O-O-O
         if self.castling:
@@ -464,77 +450,79 @@ class Move:
         return string
     
 class MoveNode:
-    """
-    Represents a node in a move tree for a chess game, storing information about a specific move 
-    and its relationship to other moves.
+    """Represents a node in the move tree, holding information about a move and its state.
+
+    A `MoveNode` encapsulates the details of a single move, its parent node (previous move), and any 
+    relevant game state information such as en passant, castling rights, half-moves, full-moves, 
+    and the last irreversible move. The `MoveNode` structure is used for managing move history and 
+    supporting undo/redo operations in the game.
 
     Attributes:
-        move: The move associated with this node.
-        parent: The parent MoveNode representing the previous move in the sequence.
-        children: A list of child MoveNode objects representing subsequent moves.
-        ep: The en passant target square from the board state.
-        castling: The castling rights from the board state.
-        half_moves: The number of half-moves since the last capture or pawn advance.
-        full_moves: The total number of full moves in the game.
-        last_irreversible_move: The move number of the last irreversible move in the game.
-
-    Args:
-        move: The move associated with this node.
-        parent: The parent MoveNode representing the previous move in the sequence.
-        board: The board state from which to extract additional move-related information.
+        move (Move): The move associated with this node.
+        parent (MoveNode): The parent node (previous move).
+        children (list): List of child nodes (subsequent moves).
+        en_passant (tuple): The en passant target position, if any.
+        castling (list): Castling rights for both players.
+        half_moves (int): The number of half-moves (plies) in the game.
+        full_moves (int): The number of full moves in the game.
+        last_irreversible_move (Move): The last irreversible move made.
     """
-    def __init__(self, move, parent, board):
+    def __init__(self, move, board):
         self.move = move
-        self.parent = parent
+        self.parent = None
         self.children = []
-        self.ep = board.ep
+        self.en_passant = board.en_passant
         self.castling = board.castling
         self.half_moves = board.half_moves
         self.full_moves = board.full_moves
         self.last_irreversible_move = board.last_irreversible_move
 
 class MoveTree:
+    """Represents a tree structure for managing the history of moves in the game.
+
+    The `MoveTree` is used to store the sequence of moves made during the game, allowing for 
+    efficient traversal and operations like undo, redo, and move history tracking. It maintains 
+    a root node and the current node representing the ongoing game state.
+
+    Attributes:
+        root (MoveNode): The root node of the move tree, representing the starting position of the game.
+        current (MoveNode): The current node in the move tree, representing the state of the game after the most recent move.
+    """
     def __init__(self, board):
-        """
-        Initializes the MoveTree object with a root node and sets the current node to the root.
-
-        Parameters:
-            board (Board): The initial state of the chessboard.
-
-        Attributes:
-            root (MoveNode): The root node of the move tree, representing the starting position of the board.
-            current (MoveNode): The current node in the move tree, initially set to the root.
-        """
-        self.root = MoveNode(None, None, board)
+        self.root = MoveNode(None, board)
         self.current = self.root
 
     def add(self, board, move_node: MoveNode):
-        """
-        Adds a new move node to the current position in the move tree and updates the board state.
+        """Adds a new move node to the move tree.
 
-        This function links the given move node to the current node as its parent, appends it to the 
-        list of children of the current node, and then moves the game state forward to the newly added move.
+        This method adds a new `MoveNode` as a child of the current node and updates the current 
+        node to the newly added one. It also adjusts the game state by moving forward in the move tree 
+        history, making the newly added move the active one.
 
-        Parameters:
-            board: The current state of the chessboard, which will be updated to reflect the new move.
-            move_node (MoveNode): The move node to be added to the move tree. This represents a potential move 
-                                  in the game and will be linked to the current node.
+        Args:
+            board (Board): The current board state, used to update the game state.
+            move_node (MoveNode): The move node to be added to the move tree.
+
+        Returns:
+            None
         """
         move_node.parent = self.current
         self.current.children.append(move_node)
         self.go_forward(board, -1)
 
     def go_forward(self, board, index=0):
-        """
-        Advances the game state by moving to the next child node in the game tree.
+        """Moves forward in the move tree to the specified child node.
 
-        This function updates the current position in the game tree to the specified child node,
-        executes the associated move on the board, plays the corresponding move sound, and updates
-        the board's highlights and move history.
+        This method advances the current node to a child node in the move tree, performing the 
+        associated move on the board and updating the board state accordingly. It also plays 
+        the sound corresponding to the move and updates the board highlights and history.
 
-        Parameters:
-            board (Board): The current game board object to apply the move to.
-            index (int, optional): The index of the child node to move to. Defaults to 0.
+        Args:
+            board (Board): The current board state, used to execute the move and update the board.
+            index (int, optional): The index of the child node to move to. Defaults to 0 (the first child).
+
+        Returns:
+            None
         """
         if self.current.children:
             self.current = self.current.children[index]
@@ -544,13 +532,17 @@ class MoveTree:
             board.update_history()
 
     def go_backward(self, board):
-        """
-        Reverts the game state to the previous move by undoing the current move 
-        and updating the board and game history accordingly.
+        """Moves backward in the move tree to the parent node.
 
-        Parameters:
-            board (Board): The current state of the chessboard, which will be 
-                           updated to reflect the previous move.
+        This method moves the current node to its parent node, effectively undoing the last move 
+        and reverting the board state to what it was before that move. It also plays the sound 
+        corresponding to the undone move and updates the board highlights and history.
+
+        Args:
+            board (Board): The current board state, used to undo the move and restore the board.
+        
+        Returns:
+            None
         """
         if self.current.parent:
             self.current.move.undo(board)
@@ -560,88 +552,84 @@ class MoveTree:
             board.update_history()
 
     def go_previous(self, board):
-        """
-        Navigate to the previous sibling node in the game tree and update the board state accordingly.
+        """Cycles to the previous sibling variation in the move tree.
 
-        This function moves the current position in the game tree to the previous sibling
-        of the current node, if it exists. It first navigates backward to the parent node,
-        then forward to the appropriate sibling node based on the calculated index.
+        This method rotates the list of sibling nodes (alternate moves from the same position),
+        brings the last one to the front, then moves backward to the parent node and forward 
+        to the newly rotated first child. This allows the user to cycle backward through 
+        alternative move lines (variations) at a given position.
 
-        Parameters:
-            board: The current state of the chessboard. This parameter is used to update
-                   the board state as the navigation occurs.
+        Args:
+            board (Board): The current board state, used to undo and reapply moves.
+
+        Returns:
+            None
         """
         if self.current.parent:
             siblings = self.current.parent.children
-            index = (siblings.index(self.current) - 1) % len(siblings)
-            # print("SIBLINGS BEFORE", [s.move.notation for s in siblings])
-            # siblings.append(siblings.pop(0))
-            # siblings.insert(0, siblings.pop(index))
-            # self.current.parent.children = siblings
-            # print("SIBLINGS AFTER", [s.move.notation for s in siblings])
+            siblings.insert(0, siblings.pop(-1))
             self.go_backward(board)
-            self.go_forward(board, index)
+            self.go_forward(board, 0)
 
     def go_next(self, board):
-        """
-        Advances to the next sibling node in the game tree and updates the board state accordingly.
+        """Cycles to the next sibling variation in the move tree.
 
-        This function navigates to the next sibling of the current node in the game tree, if it exists. 
-        It first moves the game state backward to the root of the current node, then moves forward 
-        to the selected sibling node, updating the board state in the process.
+        This method rotates the list of sibling nodes (alternative continuations from the same position)
+        by moving the first one to the end of the list. It then undoes the current move and replays the
+        new first child move, allowing the user to cycle forward through move variations.
 
-        Parameters:
-            board (object): The current state of the chessboard, which will be updated as the function 
-                            navigates through the game tree.
+        Args:
+            board (Board): The current board state, used to undo and reapply moves.
+
+        Returns:
+            None
         """
         if self.current.parent:
             siblings = self.current.parent.children
-            index = (siblings.index(self.current) + 1) % len(siblings)
-            #print("SIBLINGS BEFORE", [s.move.notation for s in siblings])
-            #siblings.append(siblings.pop(0))
-            #siblings.insert(0, siblings.pop(index))
-            #self.current.parent.children = siblings
-            #print("SIBLINGS AFTER", [s.move.notation for s in siblings])
+            siblings.append(siblings.pop(0))
             self.go_backward(board)
-            self.go_forward(board, index)
+            self.go_forward(board, 0)
 
     def go_root(self, board):
-        """
-        Navigates to the root of the move tree by repeatedly moving backward 
-        until the current node has no parent.
+        """Navigates to the root of the move tree.
 
-        Parameters:
-            board (object): The board object representing the current state 
-                            of the chess game. It is used to update the board 
-                            state as the function traverses backward through 
-                            the move tree.
+        This method repeatedly calls go_backward to undo moves and restore the board state
+        to the beginning of the game (the root node).
+
+        Args:
+            board (Board): The current board state, used to undo each move step-by-step.
+
+        Returns:
+            None
         """
         while self.current.parent:
             self.go_backward(board)
 
     def go_leaf(self, board):
-        """
-        Navigates to the leaf node in a tree structure by iteratively moving forward 
-        through the first child of the current node.
+        """Navigates to the last descendant (leaf) node in the current move sequence.
 
-        Parameters:
-            board (object): The current state of the board, which is used to update 
-                            the state as the function traverses through the tree.
+        This method repeatedly calls go_forward to advance through all child nodes from
+        the current node until reaching a node with no children, effectively applying all
+        subsequent moves in the current variation.
+
+        Args:
+            board (Board): The current board state, used to apply each move step-by-step.
+
+        Returns:
+            None
         """
         while self.current.children:
             self.go_forward(board)
 
     def get_root_to_leaf(self):
-        """
-        Retrieves the sequence of moves from the root node to the current node in a tree structure.
+        """Retrieves the sequence of moves from the root node to the current node.
 
-        Utility:
-        This function is useful for reconstructing the path of moves that led to the current state 
-        in a game or decision tree. It traverses the parent nodes starting from the current node 
-        and collects the moves in reverse order, returning them in the correct sequence.
+        This method traverses the move tree backward from the current node to the root,
+        collecting each move along the path. The resulting list represents the complete
+        move history for the current variation.
 
         Returns:
-        list: A list of moves representing the path from the root node to the current node.
+            List[Move]: A list of Move objects representing the path from the root to the current node.
         """
         moves = []
         current = self.current
@@ -651,12 +639,14 @@ class MoveTree:
         return moves[::-1]
     
     def flip_tree(self):
-        """
-        Flips the moves in the entire tree structure starting from the root node.
+        """Flips all moves in the move tree horizontally.
 
-        This function traverses a tree structure starting from the root node and 
-        flips the moves associated with each node using the `flip_move` method. 
-        It ensures that all moves in the tree are inverted or mirrored as needed.
+        This method traverses the entire move tree starting from the root and applies
+        flip_move() to each Move object. It is typically used to invert the board's
+        perspective (e.g., for flipping between white and black view).
+
+        Returns:
+            None
         """
         current = self.root
         queue = [current]
