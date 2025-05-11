@@ -106,3 +106,4 @@ class Colors(Enum):
     LIGHT_GRAY = (220, 220, 220)
     DARK_GRAY = (40, 40, 40)
     GRAY = (100, 100, 100)
+    TRANSPARENT = (0, 0, 0)

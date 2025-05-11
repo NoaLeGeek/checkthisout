@@ -196,7 +196,7 @@ class Game(Scene):
         highlight_surface = pygame.Surface((config.tile_size, config.tile_size), pygame.SRCALPHA)
         for tile in self.board.board.values():
             if tile.highlight_color is not None:
-                highlight_surface.fill(tile.get_color())
+                highlight_surface.fill(tile.get_highlight_color())
                 x, y = tile.pos[1] * config.tile_size + config.margin + config.eval_bar_width, tile.pos[0] * config.tile_size + config.margin
                 screen.blit(highlight_surface, (x, y))
 
@@ -249,6 +249,7 @@ class Game(Scene):
         pos = get_pos(pygame.mouse.get_pos())
         debug_print("LEFT CLICK", pos)
         if self.board.in_bounds(pos):
+            self.board.update_highlights()
             if self.board.game_over == False and self.board.current_player.ia == -1:
                 self.board.select(pos)
 

@@ -29,7 +29,7 @@ class Tile:
         """
         return (sum(self.pos)) % 2
 
-    def calc_moves(self, board, **kwds) -> list[tuple[int, int]]:
+    def calc_moves(self, board, **kwargs) -> list[tuple[int, int]]:
         """
         Delegates the move calculation to the piece currently occupying the tile.
 
@@ -38,13 +38,18 @@ class Tile:
 
         Args:
             board (Board): The current game board, required for determining valid moves.
-            **kwds: Additional keyword arguments to pass through to the piece's move calculation logic.
+            **kwargs: Additional keyword arguments to pass through to the piece's move calculation logic.
+
+        Raises:
+            ValueError: If no piece is present on the tile when the method is called.
 
         Returns:
             list[tuple[int, int]]: A list of (row, column) positions representing legal or potential moves
                 for the piece on this tile.
         """
-        return self.piece.calc_moves(board, self.pos, **kwds)
+        if self.piece is None:
+            raise ValueError(f"No piece on the tile {self.pos}, cannot calculate moves. Board state: {str(board)}")
+        return self.piece.calc_moves(board, self.pos, **kwargs)
 
     def calc_position(self) -> None:
         """
@@ -111,7 +116,7 @@ class Tile:
             board.get_player(self.piece.color).king = self.pos
         return can_move
     
-    def get_color(self) -> tuple[int, int, int, int]:
+    def get_highlight_color(self) -> tuple[int, int, int, int]:
         """
         Returns the RGBA color value used to highlight the tile based on its current highlight state.
 
@@ -143,4 +148,7 @@ class Tile:
             # Selected piece
             case 4:
                 color, a = Colors.CYAN.value, 75
+            # No highlight
+            case _:
+                color, a = Colors.TRANSPARENT.value, 0
         return *color, a
