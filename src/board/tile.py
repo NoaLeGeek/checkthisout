@@ -3,21 +3,15 @@ from src.utils import flip_pos
 from src.constants import Colors
 
 class Tile:
+    """
+    Represents a single tile on the chess board, holding position, visual state, and any piece it contains.
+
+    Attributes:
+        pos (tuple[int, int]): The (row, column) coordinates of the tile on the board.
+        highlight_color (Optional[Any]): Visual indicator used for UI highlighting (e.g., move suggestions or threats).
+        piece (Optional[Piece]): The chess piece currently occupying the tile, if any.
+    """
     def __init__(self, pos: tuple[int, int]):
-        """
-        Initializes a Tile object representing a single square on a chessboard.
-
-        Parameters:
-            pos (tuple[int, int]): A tuple representing the position of the tile 
-                                   on the chessboard in (row, column) format.
-
-        Attributes:
-            pos (tuple[int, int]): The position of the tile on the chessboard.
-            highlight_color (None | tuple[int, int, int, int]): The color used to highlight the tile, 
-                                             if applicable. Defaults to None.
-            piece (None | Piece): The chess piece currently occupying the tile, 
-                                   if any. Defaults to None.
-        """
         self.pos = pos
         self.calc_position()
         self.highlight_color = None
@@ -25,78 +19,75 @@ class Tile:
 
     def get_square_color(self) -> int:
         """
-        Determines the color of the square based on its position.
+        Returns the color of the tile based on its board position.
 
-        This method calculates the color of a chessboard square using the sum of 
-        the coordinates in `self.pos`. If the sum is even, the square is white (0). 
-        If the sum is odd, the square is black (1).
+        The color is determined by the parity of the sum of its row and column indices,
+        which alternates between 0 (light square) and 1 (dark square) in a standard checkerboard pattern.
 
         Returns:
-            int: The color of the square, where 0 represents white and 1 represents black.
+            int: 0 if the tile is a light square, 1 if it is a dark square.
         """
         return (sum(self.pos)) % 2
 
     def calc_moves(self, board, **kwds) -> list[tuple[int, int]]:
         """
-        Calculate the possible moves for the piece on this tile.
+        Delegates the move calculation to the piece currently occupying the tile.
 
-        This method delegates the calculation of possible moves to the piece
-        located on the tile. It uses the current board state and the position
-        of the tile to determine valid moves.
+        This method calls the piece’s own calc_moves method using the tile’s position and
+        any additional keyword arguments provided.
 
-        Parameters:
-            board (list[list]): The current state of the chessboard, represented
-                as a 2D list where each element corresponds to a tile.
-            **kwds: Additional keyword arguments that may be required for specific
-                piece movement logic.
+        Args:
+            board (Board): The current game board, required for determining valid moves.
+            **kwds: Additional keyword arguments to pass through to the piece's move calculation logic.
 
         Returns:
-            list[tuple[int, int]]: A list of tuples representing the valid moves
-            for the piece. Each tuple contains the row and column indices of a
-            potential destination tile.
+            list[tuple[int, int]]: A list of (row, column) positions representing legal or potential moves
+                for the piece on this tile.
         """
         return self.piece.calc_moves(board, self.pos, **kwds)
 
     def calc_position(self) -> None:
         """
-        Calculates and updates the pixel coordinates of the tile on the board.
+        Calculates the screen coordinate of the tile based on its board position and layout configuration.
 
-        This method computes the position of the tile in terms of pixel coordinates
-        based on its grid position (`self.pos`) and updates the `self.coord` attribute.
-        The calculation takes into account the tile size, margin, and evaluation bar width
-        defined in the `config` module.
+        This method converts the tile's (row, column) board coordinates into pixel coordinates for rendering
+        on the user interface, taking into account tile size, board margin, and the width of the evaluation bar.
+
+        Returns:
+            None: This method updates the `coord` attribute in place.
         """
         self.coord = (self.pos[1] * config.tile_size + config.margin + config.eval_bar_width, self.pos[0] * config.tile_size + config.margin)
 
     def flip(self) -> None:
         """
-        Flips the tile's position and recalculates its coordinates.
+        Flips the tile's board position and updates its screen coordinate accordingly.
 
-        This method updates the tile's position by flipping it using the `flip_pos` function.
-        After flipping, it recalculates the tile's position on the board by calling `calc_position`.
+        This is typically used when the board orientation is reversed (e.g., flipping between players' perspectives).
+        The method modifies the tile's `pos` using a position-flipping utility and recalculates its corresponding UI coordinate.
+
+        Returns:
+            None: This method updates the `pos` and `coord` attributes in place.
         """
         self.pos = flip_pos(self.pos)
         self.calc_position()
 
     def can_move(self, board, to: tuple[int, int]) -> bool:
         """
-        Determines if a piece on the current tile can move to a specified destination tile 
-        without putting its king in check.
+        Determines whether a move from this tile to the given destination is legal with respect to king safety.
 
-        This method temporarily simulates the move by swapping the piece to the destination 
-        tile and checks if the king of the current player is in check after the move. 
-        It restores the board to its original state after the check.
+        This method performs a temporary move simulation to test whether moving the piece to the target position
+        would leave the player's king in check. The board state is restored after the check.
 
-        Parameters:
-            board (Board): The current state of the chessboard.
-            to (tuple[int, int]): The coordinates of the destination tile as a tuple (row, column).
-
-        Returns:
-            bool: True if the piece can move to the destination tile without putting its king 
-                  in check, False otherwise.
+        Args:
+            board (Board): The current game board, used for evaluating the legality of the move.
+            to (tuple[int, int]): The destination position to test (row, column).
 
         Raises:
-            ValueError: If there is no piece on the current tile.
+            ValueError: If no piece is present on the tile when the method is called.
+
+        Returns:
+            bool: True if the move does not place the player's king in check and is therefore legal;
+                False otherwise.
         """
         if self.piece is None:
             raise ValueError(f"No piece on the tile {self.pos}, cannot move to {to}. Board state: {str(board)}")
@@ -122,16 +113,18 @@ class Tile:
     
     def get_color(self) -> tuple[int, int, int, int]:
         """
-        Determines the RGBA color of a tile based on its highlight state.
+        Returns the RGBA color value used to highlight the tile based on its current highlight state.
 
-        This method uses the `highlight_color` attribute of the tile to determine
-        the appropriate color and transparency level (alpha) to return. The color
-        is represented as a tuple of four integers (R, G, B, A), where R, G, and B
-        are the red, green, and blue components of the color, and A is the alpha
-        (transparency) value.
+        The color and transparency are determined by the `highlight_color` code, which corresponds
+        to different user interactions or UI states:
+            - 0: Right click → red
+            - 1: Shift + Right click → green
+            - 2: Ctrl + Right click → orange
+            - 3: Move history → yellow
+            - 4: Selected piece → cyan
 
         Returns:
-            tuple[int, int, int, int]: A tuple representing the RGBA color of the tile.
+            tuple[int, int, int, int]: The (R, G, B, A) color tuple used for rendering the tile's highlight.
         """
         color, a = None, None
         match self.highlight_color:
