@@ -17,7 +17,8 @@ class Player:
         # Pieces' position depending on their type
         self.pieces = {"P": [], "R": [], "N": [], "B": [], "Q": [], "K": []}
         # King's position
-        self.king = None
+        self.king_pos = None
+        # IA or human, -1 for Human and 1 for AI
         self.ia = -1
 
     def count_pieces(self) -> int:
@@ -37,9 +38,14 @@ class Player:
             piece (Piece): The piece to be added to the player's collection.
                 The piece will be added to the list corresponding to its notation type (e.g., "P" for pawn, "R" for rook).
 
+        Raises:
+            ValueError: If the piece's notation is not valid or not recognized by the player.
+
         Returns:
             None
         """
+        if piece.notation not in self.pieces:
+            raise ValueError(f"Invalid piece notation: {piece.notation}. Expected one of {list(self.pieces.keys())}.")
         self.pieces[piece.notation].append(piece)
 
     def remove_piece(self, piece) -> None:
@@ -51,12 +57,18 @@ class Player:
                 The piece will be removed from the list corresponding to its notation type (e.g., "P" for pawn, "R" for rook).
                 If the piece is the king ('K'), the king attribute is also set to None.
 
+        Raises:
+            ValueError: If the piece is not found in the player's collection of pieces.
+
         Returns:
             None
         """
+        if piece not in self.pieces[piece.notation]:
+            raise ValueError(f"Piece {piece} not found in player's pieces: {self.pieces}")
+        # Remove the piece from the list of pieces
         self.pieces[piece.notation].remove(piece)
         if piece.notation == 'K':
-            self.king = None
+            self.king_pos = None
 
     def get_moves(self, board) -> list[Move]:
         """
@@ -83,7 +95,7 @@ class Player:
                 else:
                     moves.append(board.convert_to_move(tile.pos, to_pos))
         return moves
-    
+     
     def get_legal_moves(self, board) -> list[Move]:
         """
         Returns all legal moves for the piece on the current board.
@@ -117,4 +129,4 @@ class Player:
         """
         if config.rules["giveaway"]:
             return False
-        return self.king in [move.to_pos for move in board.get_player(-self.color).get_moves(board)]
+        return self.king_pos in [move.to_pos for move in board.get_player(-self.color).get_moves(board)]

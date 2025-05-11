@@ -104,7 +104,7 @@ class Tile:
         self_piece = self.piece
         # Swap the piece with the destination square
         if self.piece.notation == "K":
-            board.get_player(self.piece.color).king = to
+            board.get_player(self.piece.color).king_pos = to
         board.get_tile(to).piece = self.piece
         self.piece = None
         # Check if the king is in check after the move
@@ -113,7 +113,7 @@ class Tile:
         self.piece = self_piece
         board.get_tile(to).piece = save_piece
         if self.piece.notation == "K":
-            board.get_player(self.piece.color).king = self.pos
+            board.get_player(self.piece.color).king_pos = self.pos
         return can_move
     
     def get_highlight_color(self) -> tuple[int, int, int, int]:

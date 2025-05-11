@@ -170,11 +170,9 @@ class Board:
                         piece.image = self.piece_images[piece_image_key]
                     self.get_player(color).add_piece(piece)
                     self.board[(row, column)].piece = piece
-
                     # Track the king's position
-                    if char.upper() == "K":
-                        self.get_player(color).king = (row, column)
-
+                    if piece.notation == "K":
+                        self.get_player(color).king_pos = (row, column)
                     column += 1
 
     def _initialize_castling(self, castling_part: str):
@@ -219,7 +217,7 @@ class Board:
             bool: Returns `True` if a rook of the correct color is found in the castling direction, 
                 `False` otherwise.
         """
-        row, king_col = self.get_player(color).king
+        row, king_col = self.get_player(color).king_pos
         for col in range(king_col, -1 if direction == -1 else config.columns, direction):
             piece = self.get_piece((row, col))
             if piece and piece.notation == "R" and piece.color == color:
@@ -318,7 +316,7 @@ class Board:
         Raises:
             None
         """
-        if config.rules["king_of_the_hill"] == True and self.waiting_player.king in self.get_center():
+        if config.rules["king_of_the_hill"] == True and self.waiting_player.king_pos in self.get_center():
             self.winner = "Black" if self.turn == 1 else "White"
         elif config.rules["+3_checks"] == True and self.checks[-self.turn] >= 3:
             self.winner = "Black" if self.turn == 1 else "White"
@@ -510,7 +508,7 @@ class Board:
             self.castling[piece.color] = {1: False, -1: False}
         elif piece.notation == "R":
             # If the Rook moves, update the castling rights for that rook's side
-            side = 1 if move.from_pos[1] > self.current_player.king[1] else -1
+            side = 1 if move.from_pos[1] > self.current_player.king_pos[1] else -1
             self.castling[piece.color][side] = False
 
     def _update_last_irreversible_move(self, move: Move):
@@ -796,7 +794,7 @@ class Board:
         # Flipping the kings' positions
         for color in [1, -1]:
             player = self.get_player(color)
-            player.king = flip_pos(player.king)
+            player.king_pos = flip_pos(player.king_pos)
         # Flipping the en passant square
         if self.en_passant:
             self.en_passant = flip_pos(self.en_passant)

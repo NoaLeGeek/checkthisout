@@ -134,7 +134,7 @@ class Move:
         """
         # Update kings' positions
         if self.moving_piece.notation == "K":
-            board.current_player.king = self.to_pos
+            board.current_player.king_pos = self.to_pos
 
         # Update player's pieces
         if self.is_capture() and not self.castling and not self.en_passant:
@@ -298,7 +298,7 @@ class Move:
 
         # Restore king position
         if self.moving_piece.notation == "K":
-            board.current_player.king = self.from_pos
+            board.current_player.king_pos = self.from_pos
 
         # Restore player's pieces
         if self.is_capture() and not self.castling:

@@ -160,10 +160,9 @@ class Game(Scene):
         super().update()
         if self.board.game_over == False and self.board.current_player.ia == True:
             if self.ia_counter >= 1:
-
                 self.board.current_player.play_move(self.board)
                 self.ia_counter = 0
-            else :
+            else:
                 self.ia_counter += 1/config.fps
         if self.board.winner and not self.labels:
             self.handle_winner()
@@ -249,9 +248,9 @@ class Game(Scene):
         pos = get_pos(pygame.mouse.get_pos())
         debug_print("LEFT CLICK", pos)
         if self.board.in_bounds(pos):
-            self.board.update_highlights()
             if self.board.game_over == False and self.board.current_player.ia == -1:
                 self.board.select(pos)
+            self.board.update_highlights()
 
     def handle_right_click(self, keys:dict):
         """
