@@ -2,30 +2,17 @@ from src.config import config
 from src.board.move import Move
 
 class Player:
+    """
+    Represents a player in the game with a specified color and tracking of pieces.
+
+    Attributes:
+        color (int): The color of the player, represented as an integer (e.g., 1 for white, -1 for black).
+        pieces (dict): A dictionary that stores the positions of the player's pieces categorized by type
+            (e.g., "P" for pawn, "R" for rook, "N" for knight, "B" for bishop, "Q" for queen, "K" for king).
+        king (optional): Stores the current position of the king piece, or None if not set.
+        ia (int): Represents whether the player is controlled by AI (-1 for AI, 1 for human).
+    """
     def __init__(self, color: int):
-        """
-        Initializes a Player object with the specified color.
-
-        This constructor sets up the player's color, initializes the positions
-        of their pieces by type, and tracks the king's position. It also includes
-        an attribute for AI behavior, which is set to a default value.
-
-        Parameters:
-            color (int): The color of the player. Typically, 0 represents white
-                         and 1 represents black.
-
-        Attributes:
-            color (int): The color of the player.
-            pieces (dict): A dictionary where keys are piece types ("P" for pawn,
-                           "R" for rook, "N" for knight, "B" for bishop, "Q" for queen,
-                           "K" for king) and values are lists of positions for each
-                           piece type.
-            king (None or tuple): The position of the king on the board. Initially set
-                                  to None and should be updated when the king's position
-                                  is known.
-            ia (int): An integer representing whether the player is controlled by AI.
-                      A value of -1 indicates no AI control.
-        """
         self.color = color
         # Pieces' position depending on their type
         self.pieces = {"P": [], "R": [], "N": [], "B": [], "Q": [], "K": []}
@@ -35,39 +22,37 @@ class Player:
 
     def count_pieces(self) -> int:
         """
-        Counts the total number of pieces owned by the player.
-
-        This method iterates through the player's collection of pieces and sums
-        the number of pieces across all types (pawns, rooks, knights, bishops,
-        queens, and kings).
+        Counts the total number of pieces the player has on the board.
 
         Returns:
-            int: The total number of pieces owned by the player.
+            int: The total number of pieces of the player, including all types (pawns, rooks, knights, bishops, queens, kings).
         """
         return sum(len(pieces) for pieces in self.pieces.values())
 
     def add_piece(self, piece) -> None:
         """
-        Adds a chess piece to the player's collection of pieces.
+        Adds a piece to the player's collection of pieces.
 
-        This method appends the given chess piece to the list of pieces
-        associated with its notation in the player's collection.
+        Args:
+            piece (Piece): The piece to be added to the player's collection.
+                The piece will be added to the list corresponding to its notation type (e.g., "P" for pawn, "R" for rook).
 
-        Parameters:
-            piece: The chess piece to be added. It is expected to have a 
-                   `notation` attribute that serves as a key to categorize
-                   the piece in the player's collection.
+        Returns:
+            None
         """
         self.pieces[piece.notation].append(piece)
 
     def remove_piece(self, piece) -> None:
         """
-        Removes a piece from the player's collection of pieces. If the piece being removed
-        is the king, the player's king attribute is set to None.
+        Removes a piece from the player's collection of pieces.
 
-        Parameters:
-            piece (Piece): The piece object to be removed. It must have a `notation` attribute
-                           that identifies the type of piece (e.g., 'K' for king).
+        Args:
+            piece (Piece): The piece to be removed from the player's collection.
+                The piece will be removed from the list corresponding to its notation type (e.g., "P" for pawn, "R" for rook).
+                If the piece is the king ('K'), the king attribute is also set to None.
+
+        Returns:
+            None
         """
         self.pieces[piece.notation].remove(piece)
         if piece.notation == 'K':
@@ -75,19 +60,15 @@ class Player:
 
     def get_moves(self, board) -> list[Move]:
         """
-        Generates a list of all possible moves for the player based on the current state of the board.
+        Generates all possible legal moves for the player’s pieces on the given board.
 
-        This method iterates through all tiles on the board, checking if the tile contains a piece
-        belonging to the player. For each piece, it calculates all valid moves, including special
-        handling for pawn promotion. The resulting moves are returned as a list of `Move` objects.
-
-        Parameters:
-            board (Board): The current state of the chessboard. It provides access to the tiles,
-                           pieces, and utility methods for move calculation.
+        Args:
+            board (Board): The current game board, which contains the state of all pieces and methods for move calculations.
 
         Returns:
-            list[Move]: A list of all possible moves for the player, including regular moves and
-                        promotion moves if applicable.
+            list[Move]: A list of valid moves that the player can make, including pawn promotions when applicable.
+                Each move is represented by a `Move` object, which details the starting and destination positions.
+                If a pawn reaches the last row, promotion moves are generated.
         """
         moves = []
         for tile in board.board.values():
@@ -105,33 +86,34 @@ class Player:
     
     def get_legal_moves(self, board) -> list[Move]:
         """
-        Retrieves a list of all legal moves for the player on the given board.
+        Returns all legal moves for the piece on the current board.
 
-        This method filters the moves generated by `get_moves` to include only those
-        that are legal according to the current state of the board.
+        This method filters out illegal moves from the complete list of possible moves,
+        retaining only those that comply with the rules of the game (e.g., no self-check).
 
-        Parameters:
-            board (Board): The current state of the chessboard.
+        Args:
+            board (Board): The current game board instance containing piece positions and state.
 
         Returns:
-            list[Move]: A list of legal moves that the player can make.
+            list[Move]: A list of Move objects that are considered legal for this piece
+                on the given board.
         """
         return [move for move in self.get_moves(board) if move.is_legal(board)]
     
     def is_king_check(self, board) -> bool:
         """
-        Determines if the player's king is in check.
+        Determines if the king of this piece's color is currently in check.
 
-        This method checks whether the player's king is under attack by any of the opponent's possible moves.
-        If the "giveaway" rule is enabled in the configuration, the method will always return False, as the 
-        rule implies that checks are not considered.
+        This method checks whether the king's position is targeted by any legal move
+        of the opposing player. In "giveaway" rule variants, checking the king is disabled.
 
-        Parameters:
-            board (Board): The current state of the chessboard, which includes information about all pieces 
-                           and their positions.
+        Args:
+            board (Board): The current game board, containing all piece positions and logic
+                for generating opponent moves.
 
         Returns:
-            bool: True if the player's king is in check, False otherwise.
+            bool: True if the king is in check under standard rules; False otherwise
+                or if the "giveaway" variant is active.
         """
         if config.rules["giveaway"]:
             return False
